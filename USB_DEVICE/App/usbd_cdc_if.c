@@ -31,7 +31,8 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
 /* USER CODE END PV */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -62,7 +63,7 @@
   */
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
-extern UART_HandleTypeDef huart2;
+
 void Change_USART_BaudRate(UART_HandleTypeDef *huart, uint32_t new_baudrate);
 // Declare a LineCoding structure
 USBD_CDC_LineCodingTypeDef LineCoding = {
@@ -236,7 +237,7 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 
 
 		// Update USART configuration
-		printf("CDC_SET_LINE_CODING %ld \n", LineCoding.bitrate);
+		printf("CDC_SET_LINE_CODING huart1 %ld \n", LineCoding.bitrate);
 		Change_USART_BaudRate(&huart2, LineCoding.bitrate);
 
 
@@ -288,8 +289,10 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
-  USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
-  USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+
+	HAL_UART_Transmit_IT(&huart2, Buf, *Len);
+	USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
+	USBD_CDC_ReceivePacket(&hUsbDeviceFS);
   return (USBD_OK);
   /* USER CODE END 6 */
 }
@@ -315,15 +318,27 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
   }
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
   result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
+
+
   /* USER CODE END 7 */
   return result;
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum) {
+	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+
+
+    return USBD_OK;
+}
+
 void Change_USART_BaudRate(UART_HandleTypeDef *huart, uint32_t new_baudrate) {
     HAL_UART_DeInit(huart); // De-initialize UART
     huart->Init.BaudRate = new_baudrate; // Set new baud rate
     HAL_UART_Init(huart); // Re-initialize UART with new settings
+
+    uint8_t rx_data;
+    HAL_UART_Receive_IT(huart, &rx_data, 1);
 }
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

@@ -45,6 +45,10 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
+uint8_t rx_data;           // Buffer to store received data
+
 
 /* USER CODE END PV */
 
@@ -60,6 +64,19 @@ int _write(int file, char *ptr, int len)
 {
   HAL_UART_Transmit(&huart1, (uint8_t*)ptr, len, HAL_MAX_DELAY);
   return len;
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+
+	if (huart->Instance == USART1) {
+		CDC_Transmit_FS(&rx_data, 1);
+		HAL_UART_Receive_IT(&huart1, &rx_data, 1);
+	} else if (huart->Instance == USART2) {
+		CDC_Transmit_FS(&rx_data, 1);
+		// Re-enable interrupt for continuous reception
+		HAL_UART_Receive_IT(&huart2, &rx_data, 1);
+	}
+
 }
 
 /* USER CODE END 0 */
@@ -97,23 +114,23 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  uint8_t TxBuffer[] = "Hello World! From STM32 USB CDC Device To Virtual COM Port\r\n";
-  uint8_t TxBufferLen = sizeof(TxBuffer);
+  HAL_UART_Receive_IT(&huart1, &rx_data, 1);
+  HAL_UART_Receive_IT(&huart2, &rx_data, 1);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  printf("Test \n");
+
+  // Start UART reception in interrupt mode
+
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 
-		CDC_Transmit_FS(TxBuffer, TxBufferLen);
-		HAL_Delay(1000);
-	//if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6) == GPIO_PIN_RESET)
+		HAL_Delay(1);
 
   }
   /* USER CODE END 3 */

@@ -228,6 +228,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 			// Transmit accumulated data over USB VCP
 			CDC_Transmit_FS(tx_buffer, buffer_index);
+			HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 
 			// Reset buffer index for next message
 			buffer_index = 0;

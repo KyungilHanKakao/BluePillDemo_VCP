@@ -19,8 +19,15 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "usart.h"
+#include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN 0 */
+#define BUFFER_SIZE 256
+
+uint8_t rx_buffer[BUFFER_SIZE];
+uint8_t tx_buffer[BUFFER_SIZE];
+volatile uint16_t buffer_index = 0;
+uint8_t rx_data;           // Buffer to store received data
 
 /* USER CODE END 0 */
 
@@ -52,6 +59,7 @@ void MX_USART1_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART1_Init 2 */
+  HAL_UART_Receive_IT(&huart1, &rx_data, 1);
 
   /* USER CODE END USART1_Init 2 */
 
@@ -81,7 +89,7 @@ void MX_USART2_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART2_Init 2 */
-
+  HAL_UART_Receive_IT(&huart2, &rx_data, 1);
 
   /* USER CODE END USART2_Init 2 */
 
@@ -199,5 +207,35 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 }
 
 /* USER CODE BEGIN 1 */
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+
+	if (huart->Instance == USART1) {
+		CDC_Transmit_FS(&rx_data, 1);
+		HAL_UART_Receive_IT(&huart1, &rx_data, 1);
+	} else if (huart->Instance == USART2) {
+		// Store received character in buffer
+		if (buffer_index < BUFFER_SIZE - 1) {
+			rx_buffer[buffer_index++] = rx_data;  // Assume rx_data is the received character
+		}
+
+		// Check for Enter key (newline character)
+		if ((rx_data == '\n') ||(rx_data=='\r')){
+			// Prepare to send accumulated data
+			memcpy(tx_buffer, rx_buffer, buffer_index);
+			tx_buffer[buffer_index] = '\0';  // Null-terminate if needed
+
+			// Transmit accumulated data over USB VCP
+			CDC_Transmit_FS(tx_buffer, buffer_index);
+
+			// Reset buffer index for next message
+			buffer_index = 0;
+		}
+
+		// Re-enable interrupt for continuous reception
+		HAL_UART_Receive_IT(&huart2, &rx_data, 1);
+	}
+
+}
 
 /* USER CODE END 1 */
